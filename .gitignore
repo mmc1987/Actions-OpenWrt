@@ -1,0 +1,5 @@
+current-openwrt-config.tar
+*.tar.gz
+*.tmp
+files/
+files/**
