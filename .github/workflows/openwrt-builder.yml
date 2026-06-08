@@ -75,13 +75,16 @@ jobs:
 
     - name: Load private files overlay
       env:
-        CONFIG_REPO_TOKEN: ${{ secrets.CONFIG_REPO_TOKEN }}
+        CONFIG_REPO_TOKEN: ${{ secrets.CONFIG_REPO_TOKEN || secrets.ACTIONS_TRIGGER_PAT }}
       run: |
         if [ -z "$CONFIG_REPO_TOKEN" ]; then
-          echo "CONFIG_REPO_TOKEN secret is required to clone $CONFIG_REPO_URL" >&2
-          exit 1
+          echo "::warning::CONFIG_REPO_TOKEN or ACTIONS_TRIGGER_PAT is not set. Skipping private files overlay."
+          exit 0
         fi
-        git clone --depth 1 -b "$CONFIG_REPO_BRANCH" "https://x-access-token:${CONFIG_REPO_TOKEN}@github.com/mmc1987/Openwrt_etc.git" private-config
+        if ! git clone --depth 1 -b "$CONFIG_REPO_BRANCH" "https://x-access-token:${CONFIG_REPO_TOKEN}@github.com/mmc1987/Openwrt_etc.git" private-config; then
+          echo "::warning::Failed to clone $CONFIG_REPO_URL. Skipping private files overlay."
+          exit 0
+        fi
         if [ -d "private-config/$CONFIG_REPO_PATH/etc" ]; then
           mkdir -p openwrt/files
           rsync -a --exclude='.git' --exclude='.DS_Store' "private-config/$CONFIG_REPO_PATH/" openwrt/files/
@@ -89,8 +92,7 @@ jobs:
           mkdir -p openwrt/files
           rsync -a --exclude='.git' --exclude='.DS_Store' private-config/ openwrt/files/
         else
-          echo "No OpenWrt files overlay found in private config repo" >&2
-          exit 1
+          echo "::warning::No OpenWrt files overlay found in private config repo. Skipping private files overlay."
         fi
         rm -rf private-config
 
